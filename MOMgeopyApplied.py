@@ -20,7 +20,7 @@ def do_geocode(address):
         return do_geocode(address)
 
 #Creating Geocoded Location column
-df['GeocodedLocation']=df['Location'].apply(lambda x: do_geocode(x) if x != 'Unknown' else None)
+df['GeocodedLocation']=df['Location'].apply(lambda x: do_geocode(x) if x != None else None)
 
 #Create the Latitude Column
 lat=[]
@@ -41,6 +41,9 @@ for i in df['GeocodedLocation']:
         long.append(i.longitude)
 df['Longitude']=long
 df['Longitude'].astype('float')
+
+#Drop GeocodedLocation Column
+df=df.drop(['GeocodedLocation'],axis=1)
 
 #Export Data to a csv
 df.to_csv('data.csv', index=False)
