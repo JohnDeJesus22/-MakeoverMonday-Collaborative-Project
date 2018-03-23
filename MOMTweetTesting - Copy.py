@@ -4,9 +4,11 @@
 import tweepy
 import pandas as pd
 import time
-from oauth2client.service_account import ServiceAccountCredentials
-
+from RefinedMOMTweetRetrieverCode import collectTweets#need to open directory to folder with all scripts
+#remember to do this 
+from credentials import *
 #Keys to initiate connection to twitter api for bot
+
 consumer_key=	''
 consumer_secret=''
 access_token=''
