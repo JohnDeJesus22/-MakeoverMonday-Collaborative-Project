@@ -14,38 +14,6 @@ data=pd.read_csv('data.csv',encoding='latin1')
 falsetweets=pd.read_csv('falsetweets.csv',encoding='latin1')
 realtweets=pd.read_csv('realTweets.csv',encoding='latin1')
 
-'''
-#####################################################################################
-#Post frequency by name and create total posts lists
-post_freq=data.Name.value_counts(ascending=False)
-post_totals=sorted(post_freq.unique().tolist())
-
-#Now to get a list of the indexes (aka names of 'participants')
-participants_grouped=[]
-for total in post_totals:
-    participants_grouped.append(post_freq[post_freq==total].index.tolist())
-
-#create dictionary
-participant_dict=dict(zip(post_totals,participants_grouped))
-#####################################################################################
-
-#create dataframe for 258 real tweets
-real_tweets=pd.DataFrame([],columns=data.columns.tolist())
-
-#pull keys
-keys=list(participant_dict.keys())
-
-#populate data frame
-for i in keys:
-    if i>=15:
-        for name in participant_dict[i]:
-            real_tweets=real_tweets.append(data[data.Name==name],ignore_index=True)
-
-#drop lat and long
-real_tweets=real_tweets.drop(['Latitude','Longitude'],axis=1)
-falsetweets=falsetweets.drop(['Latitude','Longitude'],axis=1)
-'''
-#########################################################################################
 #Build training data
 #create labels for classification
 realtweets['RealorFake']=1
@@ -53,45 +21,23 @@ falsetweets['RealorFake']=0
 
 #combine real and false tweets, drop lat and long, and set index
 model_data=pd.concat([realtweets,falsetweets],axis=0)
-model_data=model_data.drop(['Latitude','Longitude'],axis=1)
 model_data=model_data.set_index([[i for i in range(model_data.shape[0])]])
 
 #shuffle the data
 from sklearn.utils import shuffle
 model_data=shuffle(model_data)
+
 ######################################################################################
-
-#testing text cleaning on a single tweet#######
-test=model_data['Text'][1]
-
-pattern=re.compile(r'https\S+')#remove urls
-urls=re.findall(pattern,test)
-twtoken=TweetTokenizer()
-test=twtoken.tokenize(test)
-for url in urls:
-    if url in test:
-        test.remove(url)
-
-detokenizer=MosesDetokenizer()
-test=detokenizer.detokenize(test,return_str=True)#return back to string
-
-test=re.sub('[^a-zA-z]',' ',test)#remove extra characters and punctuation
-
-test=test.lower()#turn all words into lowercase
-
-test=test.split()#split again to remove stop words
-
-ps=PorterStemmer()#remove stop words. need to adjust for non english
-test=[ps.stem(word) for word in test if not word in set(stopwords.words('english'))]
-test=' '.join(test)#refuse tweet
-##################################################################################
+#setting up tweets for train/test split
 #initialize corpus
 corpus=[]
 
-#create instances of tweettokenizer, detokenizer, and porterstemmer
+#create instances of tweettokenizer, detokenizer, and porterstemmer.
+#initialize pattern to filter urls
 twtoken=TweetTokenizer()
 detokenizer=MosesDetokenizer()
 ps=PorterStemmer()
+pattern=re.compile(r'https\S+')
 
 #build corpus
 for i in range(model_data.shape[0]):
@@ -119,7 +65,7 @@ from sklearn.model_selection import train_test_split
 X_train,X_test,y_train, y_test=train_test_split(X,y, test_size=0.20, random_state=0)
 
 ######################################################################
-#set up naive bayes classifier due to satisfied assumptions
+#set up Naive Bayes classifier due to satisfied assumptions
 #that is:
 #binary classification
 #tweets are independent of each other
@@ -136,12 +82,53 @@ y_pred=classifier.predict(X_test)
 #confusion matrix and accuracy
 from sklearn.metrics import confusion_matrix, accuracy_score
 cm=confusion_matrix(y_test,y_pred)
-accuray=accuracy_score(y_test,y_pred)#75% on first test on 3/31/18
+accuray=accuracy_score(y_test,y_pred)#75% on first test on 3/31/18(edit 4/1 outlier)
+
+#k-fold cross validation for Naive Bayes (shows 50% twice on 4/1/18)
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
+mean=accuracies.mean() #check accuracy(bias)
+variance=accuracies.std()#determine variance
+#following done after switching pattern to r'http\S+' instead of https
+#4/1/18 first k-fold
+#mean=48%
+#variance=.05718
+#so there is an overall low accuracy and med variance
+
+#second k-fold (shuffled data again beforehand)
+#mean=50.9%
+#variance=.04882, lower variance than before
+
+#third k-fold (shuffled data beforehand)
+#mean=49%
+#variance=.054721, worst then second k-fold
+############################################################################################
+#Fitting MultiNomial Naive Bayes to Training set (should have used this first since
+#it is mainly for text classification)
+from sklearn.naive_bayes import MultinomialNB
+classifier=MultinomialNB()
+classifier.fit(X_train,y_train)
+
+y_pred=classifier.predict(X_test)
+
+#confusion matrix and accuracy
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm=confusion_matrix(y_test,y_pred)
+accuray=accuracy_score(y_test,y_pred)#75% on first test on 3/31/18(edit 4/1 outlier)
+
+#k-fold cross validation for Naive Bayes (shows 50% twice on 4/1/18)
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
+mean=accuracies.mean() #check accuracy(bias)
+variance=accuracies.std()#determine variance
+#mean=48%
+#variance=.05722, not much improvement
+
 
 '''
 Next Steps:
 1. Determine best way to prep data via:
-    a) bag of words (done with one classifier)
+    a) bag of words (done with 2 naive bayes classifiers)
     b) td-idf
     c) word2vec
     d) others?
