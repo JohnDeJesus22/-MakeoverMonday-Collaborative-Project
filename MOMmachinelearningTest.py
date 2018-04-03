@@ -61,6 +61,19 @@ cv=CountVectorizer(max_features=1500)# returns 1500 columns of most frequent wor
 X=cv.fit_transform(corpus).toarray()
 y=model_data['RealorFake'].values
 
+
+#tfidf vectorizer prep
+from sklearn.feature_extraction.text import TfidfVectorizer
+cv=TfidfVectorizer()
+X=cv.fit_transform(corpus).toarray()
+y=model_data['RealorFake'].values
+
+#hashingvectorizer prep
+from sklearn.feature_extraction.text import HashingVectorizer
+cv=HashingVectorizer(n_features=20)
+X=cv.transform(corpus).toarray()#wrap in np.abs to convert to positive for multinomial
+y=model_data['RealorFake'].values
+
 from sklearn.model_selection import train_test_split
 X_train,X_test,y_train, y_test=train_test_split(X,y, test_size=0.20, random_state=0)
 
@@ -124,6 +137,20 @@ variance=accuracies.std()#determine variance
 #mean=48%
 #variance=.05722, not much improvement
 
+
+#SVM (linear separatable version)
+#Feature Scaling: for more accurate predictions
+from sklearn.preprocessing import StandardScaler
+sc_X=StandardScaler()
+X_train=sc_X.fit_transform(X_train)
+X_test=sc_X.transform(X_test)
+
+#Fitting SVM to Training set
+from sklearn.svm import SVC
+classifier=SVC(kernel='rbf', random_state=0)
+classifier.fit(X_train, y_train)
+
+y_pred=classifier.predict(X_test)
 
 '''
 Next Steps:
