@@ -10,7 +10,7 @@ from nltk.tokenize.moses import MosesDetokenizer #had to nltk download 'perlunip
 
 #change directory and get data
 os.chdir('D:\\MakeoverMondayDataFiles')
-data=pd.read_csv('data.csv',encoding='latin1')
+data=pd.read_csv('data.csv',encoding='latin1')# to apply model on
 falsetweets=pd.read_csv('falsetweets.csv',encoding='latin1')
 realtweets=pd.read_csv('realTweets.csv',encoding='latin1')
 
@@ -59,20 +59,20 @@ for i in range(model_data.shape[0]):
 from sklearn.feature_extraction.text import CountVectorizer
 cv=CountVectorizer(max_features=1500)# returns 1500 columns of most frequent words
 X=cv.fit_transform(corpus).toarray()
-y=model_data['RealorFake'].values
+y=model_data.loc[:,'RealorFake'].values
 
 
 #tfidf vectorizer prep
 from sklearn.feature_extraction.text import TfidfVectorizer
 cv=TfidfVectorizer()
 X=cv.fit_transform(corpus).toarray()
-y=model_data['RealorFake'].values
+y=model_data.loc[:,'RealorFake'].values
 
 #hashingvectorizer prep
 from sklearn.feature_extraction.text import HashingVectorizer
 cv=HashingVectorizer(n_features=20)
 X=cv.transform(corpus).toarray()#wrap in np.abs to convert to positive for multinomial
-y=model_data['RealorFake'].values
+y=model_data.loc[:,'RealorFake'].values
 
 from sklearn.model_selection import train_test_split
 X_train,X_test,y_train, y_test=train_test_split(X,y, test_size=0.20, random_state=0)
@@ -136,7 +136,7 @@ mean=accuracies.mean() #check accuracy(bias)
 variance=accuracies.std()#determine variance
 #mean=48%
 #variance=.05722, not much improvement
-
+#############################################################################################
 
 #SVM (linear separatable version)
 #Feature Scaling: for more accurate predictions
@@ -152,17 +152,100 @@ classifier.fit(X_train, y_train)
 
 y_pred=classifier.predict(X_test)
 
-'''
-Next Steps:
-1. Determine best way to prep data via:
-    a) bag of words (done with 2 naive bayes classifiers)
-    b) td-idf
-    c) word2vec
-    d) others?
-2. Visualize?
-3. Determine best classifier (did naive bayes once due to satisfied assumptions)
-4. Apply to mass data set.
 
-'''
+#k-fold cross validation for SVM 
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
+mean=accuracies.mean() #check accuracy(bias)
+variance=accuracies.std()#determine variance
+#4/2/18: kernel svm with tfidf vectorizor yielded about 55% accuracy....
 
+########################################################################################
 
+#4/3/18 attempting logistic regression since this is a binary classification
+
+#Feature Scaling: for more accurate predictions
+from sklearn.preprocessing import StandardScaler
+sc_X=StandardScaler()
+X_train=sc_X.fit_transform(X_train)
+X_test=sc_X.transform(X_test)
+
+#Fitting Logistic Regression to the Training Set
+from sklearn.linear_model import LogisticRegression
+classifier=LogisticRegression(random_state=0)
+classifier.fit(X_train,y_train)
+
+y_pred=classifier.predict(X_test)
+
+#confusion matrix and accuracy
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm=confusion_matrix(y_test,y_pred)
+accuray=accuracy_score(y_test,y_pred)
+
+#k-fold cross validation for Logistric Regression
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
+mean=accuracies.mean() #check accuracy(bias)
+variance=accuracies.std()#determine variance
+#4/3/18 with Count Vectorizer still ranging at about 51% accuracy...
+#confusion matrix showed equal number of false positives and false negatives (41 each)
+
+###########################################################################################
+#4/3/18 attempting random forests since it is an ensemble method since kernel SVM was more
+#successful
+
+#Feature Scaling: for more accurate predictions
+from sklearn.preprocessing import StandardScaler
+sc_X=StandardScaler()
+X_train=sc_X.fit_transform(X_train)
+X_test=sc_X.transform(X_test)
+
+#Fitting Random Forest Classification to Training set
+from sklearn.ensemble import RandomForestClassifier
+classifier=RandomForestClassifier(n_estimators=10, criterion='entropy',random_state=0)
+classifier.fit(X_train,y_train)
+
+#predicting the test results
+y_pred=classifier.predict(X_test)
+
+#confusion matrix and accuracy
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm=confusion_matrix(y_test,y_pred)
+accuray=accuracy_score(y_test,y_pred)
+
+#k-fold cross validation for Random Forests
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
+mean=accuracies.mean() #check accuracy(bias)
+variance=accuracies.std()#determine variance
+#4/3/18 with Count Vectorizer: lower variance but accuracy was about 49%
+#Tfidf Vectorizer: even lower variance but accuracy was still at about 49%
+#Hashing Vectorizer: larger variance than previous two vectorizers and about the same accuracy
+
+########################################################################################
+
+#decided to give adaboost a try with decision trees
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+boost=AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=2),n_estimators=600,
+                         learning_rate=1)
+boost.fit(X_train,y_train)
+
+y_pred=boost.predict(X_test)
+
+#confusion matrix and accuracy
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm=confusion_matrix(y_test,y_pred)
+accuray=accuracy_score(y_test,y_pred)
+
+#k-fold cross validation for Random Forests
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=boost, X=X_train,y=y_train,n_jobs=1,cv=10)
+mean=accuracies.mean() #check accuracy(bias)
+variance=accuracies.std()#determine variance
+#4/3/18 no improvement versus the other classifiers. Perhaps I need more data, or should just
+#change the bot to retweet all real tweets with the hashtag. Problem with that is it will include
+#non-participant submissions or 'retweets' from them.
+#Data.world has the treads for these already. Perhaps I should just take the images from there
+#and retweet those. A bot similar to the 100days of code can still be made. Will need to rework
+#the data set.
