@@ -19,19 +19,33 @@ realtweets=pd.read_csv('realTweets.csv',encoding='latin1')
 os.chdir('C:\\Users\\Sabal\\Desktop\\Data Science Class Files\\Random Practice\\MakeoverMondayProjectScripts')
 from MOM_Data_Cleaning import update_and_filter
 
-#test for one name
-realtweets,falsetweets=update_and_filter('Eva Murray',realtweets,falsetweets)
-
 #create list of names to return correct tweets
-names=['Andy Kreibel','Sarah Burnett','John DeJesus','Tableau Software','STL Tableau User Grp',
+names=['Eva Murray','Andy Kriebel','Sarah Burnett','John DeJesus','Tableau Software','STL Tableau User Grp',
        'Sarah Burnett','Tableau Public','Doc Kevin Lee Elder','EqualMeasures2030',
        'The Information Lab','Information Lab Irl','Infographics News','Data Science Renee',
        'Rodrigo Calloni','Simon Beaumont','Susan Glass','Sarah Bartlett','Jade Le Van',
        'Chantilly J','Jeff Plattner','Ken Flerlage','Umar Hassan','Mark Bradbourne',
-       'Axel W.','Nish Goel','Neil Richards','Robert Crocker']
+       'Axel W.','Nish Goel','Neil Richards','Robert Crocker','federico lusi','Marc Soares',
+       'Slalom','ClickInsight','FusionCharts','Dr. Trent Tucker','Curtis Harris',
+       'Klaus Schulte','Charlie Hutcheson','Sean Miller','Rosario Gauna','Staticum',
+       'Yoshihito Kimura','Louis Archer','Lindsay Betzendahl','Matt Wilson','Slalom Philadelphia',
+       'Young Song','Joel Gluck','Paula Jennings','Laura Sutton','Pablo Gomez','Philip Riggs',
+       'Christina P. Gorga','James Eselgroth','Fi Gordon','Mark Edwards','Ketan Deshpande',
+       'Ann Jackson','Michael DiPalma','Sian Miller','Guillaume Martin','Brittany Hink','LM-7']
 
+#append to names remaining MOM participants at the bottom of false tweets list
+for index in falsetweets.index:
+    if index > 454:
+        names.append(falsetweets.get_value(index,'Name'))
+
+#swap locations of data entries with names from falsetweets csv to realtweets csv
 for name in names:
     realtweets,falsetweets=update_and_filter(name,realtweets,falsetweets)
+
+#Create new csvs and save them
+os.chdir('D:\\MakeoverMondayDataFiles')
+falsetweets.to_csv('NewFalseTweets.csv',index=False)
+realtweets.to_csv('NewRealTweets.csv',index=False)
 
 #Build training data
 #create labels for classification
