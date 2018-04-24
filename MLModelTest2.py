@@ -40,16 +40,22 @@ corpus=[]
 twtoken=TweetTokenizer()
 detokenizer=MosesDetokenizer()
 ps=PorterStemmer()
-pattern=re.compile(r'https\S+')
+url_pattern=re.compile(r'https\S+')
+user_pattern=re.compile(r'@\S+')
 
 #build corpus
 for i in range(model_data.shape[0]):
     text=model_data['Text'][i]
-    urls=re.findall(pattern,text)
+    urls=re.findall(url_pattern,text)
+    users=re.findall(user_pattern,text)
+    users=[re.sub('[^@a-zA-z]','',user) for user in users]
     text=twtoken.tokenize(text)
     for url in urls:
         if url in text:
             text.remove(url)
+    for user in users:
+        if user in text:
+            text.remove(user)
     text=detokenizer.detokenize(text,return_str=True)
     text=re.sub('[^a-zA-z]',' ',text)
     text=text.lower()
@@ -63,41 +69,31 @@ for i in range(model_data.shape[0]):
     corpus.append(text)
     
 ###############################################################################################
-#testing with bag of words model and spliting data
+#testing with bag of words model with tfidftransformer and spliting data
 from sklearn.feature_extraction.text import CountVectorizer
 cv=CountVectorizer(max_features=1500)# returns 1500 columns of most frequent words
 X=cv.fit_transform(corpus).toarray()
 y=model_data.loc[:,'RealorFake'].values
 
+from sklearn.feature_extraction.text import TfidfTransformer
+tfidf=TfidfTransformer()
+X=tfidf.fit_transform(X)
+
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train, y_test=train_test_split(X,y,
+                                                test_size=0.20, random_state=0)
+#############################################################################
+#split then tfidf vectorize
+#split data into training and test
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train, y_test=train_test_split(corpus,model_data['RealorFake'],
+                                                test_size=0.20, random_state=0)
+
 #tfidf vectorizer prep
 from sklearn.feature_extraction.text import TfidfVectorizer
 cv=TfidfVectorizer()
-X=cv.fit_transform(corpus).toarray()
-y=model_data.loc[:,'RealorFake'].values
-
-#split data into training and test
-from sklearn.model_selection import train_test_split
-X_train,X_test,y_train, y_test=train_test_split(X,y, test_size=0.20, random_state=0)
-
-##############################################################################################
-#Fitting Naive Bayes to Training set
-from sklearn.naive_bayes import GaussianNB
-classifier=GaussianNB()
-classifier.fit(X_train,y_train)
-
-#predicting the test results
-y_pred=classifier.predict(X_test)
-
-#confusion matrix and accuracy
-from sklearn.metrics import confusion_matrix, accuracy_score
-cm=confusion_matrix(y_test,y_pred)
-accuray=accuracy_score(y_test,y_pred)
-
-#k-fold cross validation for Naive Bayes 
-from sklearn.model_selection import cross_val_score
-accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
-mean=accuracies.mean() #check accuracy(bias)
-variance=accuracies.std()#determine variance
+X_train_tfidf=cv.fit_transform(X_train).toarray()
+X_test_tfidf=cv.transform(X_test).toarray()
 
 #############################################################################################
 #Fitting MultiNomial Naive Bayes to Training set (should have used this first since
@@ -107,7 +103,7 @@ variance=accuracies.std()#determine variance
 #below version of naive bayes. Average accuracy about 55% with some accuracies 
 #reaching 60%-64% and 75%
 from sklearn.naive_bayes import MultinomialNB
-classifier=MultinomialNB()
+classifier=MultinomialNB(alpha=.9,fit_prior=True)#setting fit-prior=false improved variance
 classifier.fit(X_train,y_train)
 
 y_pred=classifier.predict(X_test)
@@ -122,3 +118,9 @@ from sklearn.model_selection import cross_val_score
 accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
 mean=accuracies.mean() #check accuracy(bias)
 variance=accuracies.std()#determine variance
+
+#determining Roc_auc score
+from sklearn import metrics
+y_pred_prob = classifier.predict_proba(X_test)[:, 1]
+y_pred_prob_percentage=sum(y_pred_prob>.5)/len(y_pred_prob)
+roc_auc=metrics.roc_auc_score(y_test, y_pred_prob)
