@@ -18,14 +18,14 @@ realtweets=pd.read_csv('NewRealTweets.csv',encoding='latin1')
 #take a random sample of realtweets
 from sklearn.utils import shuffle
 realtweets=shuffle(realtweets)
-realtweets_sample=realtweets.iloc[:len(falsetweets),:]
+#realtweets_sample=realtweets.iloc[:len(falsetweets),:]
 
 #create labels for classification
-realtweets_sample['RealorFake']=1
+realtweets['RealorFake']=1
 falsetweets['RealorFake']=0
 
 #combine real and false tweets, drop lat and long, and set index
-model_data=pd.concat([realtweets_sample,falsetweets],axis=0)
+model_data=pd.concat([realtweets,falsetweets],axis=0)
 model_data=model_data.set_index([[i for i in range(model_data.shape[0])]])
 
 #shuffle the data
@@ -71,7 +71,7 @@ for i in range(model_data.shape[0]):
 ###############################################################################################
 #testing with bag of words model with tfidftransformer and spliting data
 from sklearn.feature_extraction.text import CountVectorizer
-cv=CountVectorizer(max_features=1500)# returns 1500 columns of most frequent words
+cv=CountVectorizer(max_features=1000,strip_accents='ascii')# returns 1000 columns of most frequent words
 X=cv.fit_transform(corpus).toarray()
 y=model_data.loc[:,'RealorFake'].values
 
@@ -102,8 +102,12 @@ X_test_tfidf=cv.transform(X_test).toarray()
 #4/22/18: Improved results with removing 'makeovermonday' from tweets, tfidfvectorizer, and
 #below version of naive bayes. Average accuracy about 55% with some accuracies 
 #reaching 60%-64% and 75%
+#4/25/18: More data and some parameter tuning helped! Got mean accuracy of 77% and a variance
+#of .01! I just hope that the false tweets were represented enough...
+#roc_auc is 0.5424 and may still need more false tweets since there are a large # of 
+#false positives.
 from sklearn.naive_bayes import MultinomialNB
-classifier=MultinomialNB(alpha=.9,fit_prior=True)#setting fit-prior=false improved variance
+classifier=MultinomialNB(alpha=.87,fit_prior=True)#setting fit-prior=false improved variance
 classifier.fit(X_train,y_train)
 
 y_pred=classifier.predict(X_test)
