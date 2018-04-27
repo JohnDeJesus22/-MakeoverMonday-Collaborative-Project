@@ -3,7 +3,6 @@
 #import libraries
 import tweepy
 import pandas as pd
-import time
 import os
 os.chdir('C:\\Users\\Sabal\\Desktop\\Data Science Class Files\\Random Practice\\MakeoverMondayProjectScripts\\Twitter_Bot')
 #from RefinedMOMTweetRetrieverCode import collectTweets
