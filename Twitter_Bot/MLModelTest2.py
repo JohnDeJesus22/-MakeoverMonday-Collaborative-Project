@@ -15,11 +15,6 @@ os.chdir('D:\\MakeoverMondayDataFiles')
 falsetweets=pd.read_csv('NewFalsetweets.csv',encoding='latin1')
 realtweets=pd.read_csv('NewRealTweets.csv',encoding='latin1')
 
-#take a random sample of realtweets
-from sklearn.utils import shuffle
-realtweets=shuffle(realtweets)
-#realtweets_sample=realtweets.iloc[:len(falsetweets),:]
-
 #create labels for classification
 realtweets['RealorFake']=1
 falsetweets['RealorFake']=0
@@ -29,6 +24,7 @@ model_data=pd.concat([realtweets,falsetweets],axis=0)
 model_data=model_data.set_index([[i for i in range(model_data.shape[0])]])
 
 #shuffle the data
+from sklearn import shuffle
 model_data=shuffle(model_data,random_state=0)
 ###############################################################################################
 #setting up tweets for train/test split
@@ -36,7 +32,7 @@ model_data=shuffle(model_data,random_state=0)
 corpus=[]
 
 #create instances of tweettokenizer, detokenizer, and porterstemmer.
-#initialize pattern to filter urls
+#initialize pattern to filter urls and usernames
 twtoken=TweetTokenizer()
 detokenizer=MosesDetokenizer()
 ps=PorterStemmer()
@@ -62,7 +58,7 @@ for i in range(model_data.shape[0]):
     text=text.split()
     try:
         text.remove('makeovermonday')
-    except:
+    except Exception:
         pass
     text=[ps.stem(word) for word in text if not word in set(stopwords.words('english'))]
     text=' '.join(text)

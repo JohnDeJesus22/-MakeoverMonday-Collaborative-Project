@@ -1,5 +1,8 @@
 # Refined MakeoverMonday Tweet collector
 
+class TweetCollector:
+    
+
 #collect tweets with date inputs in yyyy-mm-dd format
 def collectTweets(startdate,enddate):
   
@@ -32,17 +35,17 @@ def collectTweets(startdate,enddate):
         screen_name=tweet.author.screen_name
         try:
             location=tweet.author.location
-        except:
+        except Exception:
             location=None
         try:
             time_zone=tweet.author.time_zone
-        except:
+        except Exception:
             time_zone=None
         language=tweet.lang
         date=tweet.created_at
         try:
             tweet_url=tweet.entities['urls'][0]['url']
-        except:
+        except Exception:
             tweet_url='NoLink'
         text=tweet.text
         viz_info.append((ids,name,screen_name,date,tweet_url,text,location,time_zone,language,pic))
