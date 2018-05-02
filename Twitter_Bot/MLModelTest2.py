@@ -24,7 +24,7 @@ model_data=pd.concat([realtweets,falsetweets],axis=0)
 model_data=model_data.set_index([[i for i in range(model_data.shape[0])]])
 
 #shuffle the data
-from sklearn import shuffle
+from sklearn.utils import shuffle
 model_data=shuffle(model_data,random_state=0)
 ###############################################################################################
 #setting up tweets for train/test split
@@ -106,6 +106,101 @@ from sklearn.model_selection import cross_val_score
 accuracies=cross_val_score(estimator=classifier, X=X_train,y=y_train,n_jobs=1,cv=10)
 mean=accuracies.mean() #check accuracy(bias)
 variance=accuracies.std()#determine variance
+
+#import libraries
+import tweepy
+import pandas as pd
+import time
+import os
+os.chdir('C:\\Users\\Sabal\\Desktop\\Data Science Class Files\\Random Practice\\MakeoverMondayProjectScripts\\Twitter_Bot')
+#from RefinedMOMTweetRetrieverCode import collectTweets
+from credentials import *
+from tweepy import TweepError
+from RefinedMOMTweetRetrieverCode import TweetCollector as TC
+
+#Keys to initiate connection to twitter api for bot
+consumer_key=	consumer_key
+consumer_secret=consumer_secret
+access_token=access_token
+access_token_secret=access_token_secret
+auth=tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token,access_token_secret)
+api=tweepy.API(auth,wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
+
+
+tweetjsons=[]
+for tweet in tweepy.Cursor(api.search,
+                           q="#makeovermonday ",since='2018-04-17', until='2018-05-02',
+                           include_entities=True,result_type='recent'
+                           ,exlude_replies=True).items():
+    if 'RT' not in tweet.text:#remove retweets
+        tweetjsons.append(tweet)
+
+viz_info=[]
+for tweet in tweetjsons:
+    ids=tweet.id
+    name=tweet.author.name
+    screen_name=tweet.author.screen_name
+    try:
+        location=tweet.author.location
+    except Exception:
+        location=None
+    try:
+        time_zone=tweet.author.time_zone
+    except Exception:
+        time_zone=None
+    language=tweet.lang
+    date=tweet.created_at
+    try:
+        tweet_url=tweet.entities['urls'][0]['url']
+    except Exception:
+        tweet_url='NoLink'
+        text=tweet.text
+        viz_info.append((ids,name,screen_name,date,tweet_url,text,location,time_zone,language))
+            
+df=pd.DataFrame(viz_info, columns=['ID','Name','TwitterHandle', 'Date', 'TweetUrl','Text','Location',
+                                           'TimeZone','Language'])
+
+prediction_corpus=[]
+
+for i in range(df.shape[0]):
+    text=df['Text'][i]
+    urls=re.findall(url_pattern,text)
+    users=re.findall(user_pattern,text)
+    users=[re.sub('[^@a-zA-z]','',user) for user in users]
+    text=twtoken.tokenize(text)
+    for url in urls:
+        if url in text:
+            text.remove(url)
+    for user in users:
+        if user in text:
+            text.remove(user)
+    text=detokenizer.detokenize(text,return_str=True)
+    text=re.sub('[^a-zA-z]',' ',text)
+    text=text.lower()
+    text=text.split()
+    try:
+        text.remove('makeovermonday')
+    except Exception:
+        pass
+    text=[ps.stem(word) for word in text if not word in set(stopwords.words('english'))]
+    text=' '.join(text)
+    prediction_corpus.append(text)
+
+
+New_tweets=cv.transform(prediction_corpus).toarray()
+X_nt=tfidf.transform(New_tweets) 
+
+predictions=classifier.predict(X_nt) 
+
+df['Results']=predictions
+
+for i in df['ID']:
+    try:
+        if tweet.author.name in realtweets['ID']:
+            api.retweet(tweet.id)
+    except TweepError:
+        pass
 
 #determining Roc_auc score
 from sklearn import metrics

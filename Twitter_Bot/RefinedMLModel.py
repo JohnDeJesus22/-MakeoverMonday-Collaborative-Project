@@ -17,7 +17,7 @@ class TweetClassifier:
         model_data=model_data.set_index([[i for i in range(model_data.shape[0])]])
         
         #shuffle the data
-        from sklearn import shuffle
+        from sklearn.utils import shuffle
         model_data=shuffle(model_data,random_state=0)
         
         return model_data
@@ -95,3 +95,16 @@ class TweetClassifier:
         y_pred=classifier.predict(X_test)
         
         return y_pred
+    
+    def Evaluation(X_train,y_train):
+        from sklearn.model_selection import cross_val_score
+        accuracies=cross_val_score(estimator=MultinomialNB(alpha=.87,fit_prior=True), 
+                                   X=X_train,y=y_train,n_jobs=1,cv=10)
+        mean=accuracies.mean() #check accuracy(bias)
+        variance=accuracies.std()#determine variance
+        
+        return accuracies, mean, variance
+    
+    
+        
+        

@@ -81,7 +81,7 @@ class TweetCollector:
         return df
 
 #import data csv, concat with new data frame, then export to csv
-    def unionExport(df):
+    def UnionExport(df):
         os.chdir('D:\\MakeoverMondayDataFiles')
         data=pd.read_csv('data.csv',encoding='latin1')
         data=pd.concat([df,data], axis=0)
