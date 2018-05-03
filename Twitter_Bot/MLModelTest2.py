@@ -75,9 +75,9 @@ from sklearn.feature_extraction.text import TfidfTransformer
 tfidf=TfidfTransformer()
 X=tfidf.fit_transform(X)
 
-from sklearn.model_selection import train_test_split
-X_train,X_test,y_train, y_test=train_test_split(X,y,
-                                                test_size=0.20, random_state=0)
+#from sklearn.model_selection import train_test_split
+#X_train,X_test,y_train, y_test=train_test_split(X,y,
+                                              #  test_size=0.20, random_state=0)
 
 #############################################################################################
 #Fitting MultiNomial Naive Bayes to Training set (should have used this first since
@@ -92,7 +92,7 @@ X_train,X_test,y_train, y_test=train_test_split(X,y,
 #false positives.
 from sklearn.naive_bayes import MultinomialNB
 classifier=MultinomialNB(alpha=.87,fit_prior=True)#setting fit-prior=false improved variance
-classifier.fit(X_train,y_train)
+classifier.fit(X,y)
 
 y_pred=classifier.predict(X_test)
 
@@ -130,33 +130,33 @@ api=tweepy.API(auth,wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
 
 tweetjsons=[]
 for tweet in tweepy.Cursor(api.search,
-                           q="#makeovermonday ",since='2018-04-17', until='2018-05-02',
+                           q="#makeovermonday ",since='2018-04-24', until='2018-05-03',
                            include_entities=True,result_type='recent'
-                           ,exlude_replies=True).items():
+                           ,exclude_replies=True).items():
     if 'RT' not in tweet.text:#remove retweets
         tweetjsons.append(tweet)
 
 viz_info=[]
 for tweet in tweetjsons:
-    ids=tweet.id
+    ids=tweet.id_str
     name=tweet.author.name
     screen_name=tweet.author.screen_name
     try:
         location=tweet.author.location
-    except Exception:
+    except:
         location=None
     try:
         time_zone=tweet.author.time_zone
-    except Exception:
+    except:
         time_zone=None
     language=tweet.lang
     date=tweet.created_at
     try:
         tweet_url=tweet.entities['urls'][0]['url']
-    except Exception:
+    except:
         tweet_url='NoLink'
-        text=tweet.text
-        viz_info.append((ids,name,screen_name,date,tweet_url,text,location,time_zone,language))
+    text=tweet.text
+    viz_info.append((ids,name,screen_name,date,tweet_url,text,location,time_zone,language))
             
 df=pd.DataFrame(viz_info, columns=['ID','Name','TwitterHandle', 'Date', 'TweetUrl','Text','Location',
                                            'TimeZone','Language'])
@@ -181,7 +181,7 @@ for i in range(df.shape[0]):
     text=text.split()
     try:
         text.remove('makeovermonday')
-    except Exception:
+    except:
         pass
     text=[ps.stem(word) for word in text if not word in set(stopwords.words('english'))]
     text=' '.join(text)
